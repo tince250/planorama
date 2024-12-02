@@ -19,6 +19,7 @@ def map_to_schema(api_response: Dict[str, Any]) -> List[Dict[str, Any]]:
 
     for event_data in events:
         mapped_event = {
+            "@context": "https://schema.org",
             "@type": "Event",
             "name": event_data.get("name"),
             "description": event_data.get("classifications")[0].get("segment").get("name") if event_data.get("classifications") else None,
