@@ -1,0 +1,22 @@
+services:
+  virtuoso:
+    image: openlink/virtuoso-opensource-7:latest
+    container_name: planorama-virtuoso
+    environment:
+      DBA_PASSWORD: ${VIRTUOSO_DBA_PASSWORD:-dba}
+      VIRT_Parameters_DefaultGraph: ${VIRTUOSO_DEFAULT_GRAPH:-https://planorama.example.org/graphs/events}
+      VIRT_SPARQL_DefaultGraph: ${VIRTUOSO_DEFAULT_GRAPH:-https://planorama.example.org/graphs/events}
+    ports:
+      - "8890:8890" # HTTP: SPARQL endpoint (/sparql, /sparql-auth) + Conductor UI
+      - "1111:1111" # isql (VirtRDB) port
+    volumes:
+      - virtuoso-data:/database
+    healthcheck:
+      test: ["CMD", "isql", "1111", "dba", "${VIRTUOSO_DBA_PASSWORD:-dba}", "EXEC=status();"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  virtuoso-data:
