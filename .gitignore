@@ -170,3 +170,5 @@ frontend/.vite/
 # Virtuoso local data (named docker volume is used by default; this covers
 # any ad hoc local data directory if someone bind-mounts one instead)
 docker/virtuoso/data/
+
+*.DS_Store
