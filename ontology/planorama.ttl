@@ -1,0 +1,200 @@
+@prefix planorama: <https://planorama.example.org/ontology#> .
+@prefix schema:    <https://schema.org/> .
+@prefix pres:      <https://planorama.example.org/resource/> .
+@prefix owl:       <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:       <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:      <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+#################################################################
+# Ontology header
+#
+# Planorama reuses Schema.org (schema:Event, schema:Place, schema:Offer,
+# schema:GeoCoordinates, schema:Person, ...) wherever a term already exists.
+# This file defines only what Schema.org does not cover: structured event
+# categories, numeric price bounds, an accessibility signal derived from
+# free-text venue data, and the user preference/interaction predicates
+# needed to store User state as RDF triples in Virtuoso instead of a
+# relational database.
+#################################################################
+
+planorama: a owl:Ontology ;
+    rdfs:label "Planorama Event Discovery Ontology" ;
+    rdfs:comment "Custom classes and predicates layered on top of Schema.org for the Planorama event discovery chatbot." .
+
+#################################################################
+# Classes
+#################################################################
+
+planorama:EventCategory a owl:Class ;
+    rdfs:subClassOf schema:Thing ;
+    rdfs:label "Event Category" ;
+    rdfs:comment "A structured event classification derived from Ticketmaster's segment/genre/subGenre hierarchy. Modeled as its own resource (rather than a free-text string on schema:Event) so it can be shared across events and referenced by User preferences." .
+
+planorama:BudgetRange a owl:Class ;
+    rdfs:label "Budget Range" ;
+    rdfs:comment "A user's stated budget ceiling/floor for events. No direct Schema.org equivalent: schema:PriceSpecification models what an event costs, not what a user is willing to pay." .
+
+planorama:Interaction a owl:Class ;
+    rdfs:label "Interaction" ;
+    rdfs:comment "Optional reified record of a user's interaction with an event (saved / attended / viewed) with a timestamp, enabling recency-weighted recommendation ranking. Not required for the M5 baseline, which uses the simpler direct savedEvent/attendedEvent edges below; add this only if timestamped/decaying preference signals are needed." .
+
+#################################################################
+# Object / datatype properties: Category
+#################################################################
+
+planorama:hasCategory a owl:ObjectProperty ;
+    rdfs:domain schema:Event ;
+    rdfs:range planorama:EventCategory ;
+    rdfs:label "has category" .
+
+planorama:segment a owl:DatatypeProperty ;
+    rdfs:domain planorama:EventCategory ;
+    rdfs:range xsd:string ;
+    rdfs:label "segment" ;
+    rdfs:comment "Ticketmaster classification top level, e.g. \"Sports\", \"Music\"." .
+
+planorama:genre a owl:DatatypeProperty ;
+    rdfs:domain planorama:EventCategory ;
+    rdfs:range xsd:string ;
+    rdfs:label "genre" ;
+    rdfs:comment "Ticketmaster classification second level, e.g. \"Basketball\", \"Rock\"." .
+
+planorama:subGenre a owl:DatatypeProperty ;
+    rdfs:domain planorama:EventCategory ;
+    rdfs:range xsd:string ;
+    rdfs:label "sub-genre" ;
+    rdfs:comment "Ticketmaster classification third level, e.g. \"NBA\"." .
+
+#################################################################
+# Object / datatype properties: pricing
+#################################################################
+
+planorama:minPrice a owl:DatatypeProperty ;
+    rdfs:domain schema:Offer ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "minimum price" ;
+    rdfs:comment "Lower bound of a Ticketmaster priceRange, kept numeric (not concatenated into a display string) so it stays queryable in SPARQL FILTER expressions." .
+
+planorama:maxPrice a owl:DatatypeProperty ;
+    rdfs:domain schema:Offer ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "maximum price" .
+
+#################################################################
+# Object / datatype properties: accessibility
+#################################################################
+
+planorama:hasAccessibleSeating a owl:DatatypeProperty ;
+    rdfs:domain schema:Place ;
+    rdfs:range xsd:boolean ;
+    rdfs:label "has accessible seating" ;
+    rdfs:comment "Heuristic flag derived from the presence/content of the venue's free-text accessibleSeatingDetail field. Ticketmaster's event-level 'accessibility' object is NOT a wheelchair-accessibility boolean (it only carries a ticket purchase limit) -- this predicate is a best-effort approximation, not a verified accessibility guarantee." .
+
+planorama:accessibilityNote a owl:DatatypeProperty ;
+    rdfs:domain schema:Place ;
+    rdfs:range xsd:string ;
+    rdfs:label "accessibility note" ;
+    rdfs:comment "Raw free-text accessibleSeatingDetail from Ticketmaster, kept verbatim so the recommendation layer can surface it as an explanation." .
+
+#################################################################
+# Object / datatype properties: ingestion bookkeeping
+#################################################################
+
+planorama:sourceId a owl:DatatypeProperty ;
+    rdfs:domain schema:Thing ;
+    rdfs:range xsd:string ;
+    rdfs:label "source id" ;
+    rdfs:comment "Raw Ticketmaster identifier for an Event or Place, preserved to make re-ingestion idempotent (the same id always mints the same IRI)." .
+
+#################################################################
+# Object / datatype properties: account (simple username/password,
+# no session/token -- the client re-sends the username with each request;
+# see backend/app/auth/passwords.py for the pbkdf2 hashing scheme)
+#################################################################
+
+planorama:username a owl:DatatypeProperty ;
+    rdfs:domain schema:Person ;
+    rdfs:range xsd:string ;
+    rdfs:label "username" ;
+    rdfs:comment "Unique login handle; also used to mint the Person's IRI (pres:user/{username}), so uniqueness is enforced by IRI collision at registration time." .
+
+planorama:passwordHash a owl:DatatypeProperty ;
+    rdfs:domain schema:Person ;
+    rdfs:range xsd:string ;
+    rdfs:label "password hash" .
+
+planorama:passwordSalt a owl:DatatypeProperty ;
+    rdfs:domain schema:Person ;
+    rdfs:range xsd:string ;
+    rdfs:label "password salt" .
+
+#################################################################
+# Object / datatype properties: User preferences
+#################################################################
+
+planorama:prefersCategory a owl:DatatypeProperty ;
+    rdfs:domain schema:Person ;
+    rdfs:range xsd:string ;
+    rdfs:label "prefers category" ;
+    rdfs:comment "Free-text category the user said they like (e.g. \"jazz\", \"basketball\"), captured directly from conversation. Deliberately a plain string rather than a link to planorama:EventCategory: what a user says they like rarely matches an ingested category's exact segment/genre spelling, and search_events' own category filter already does substring matching -- resolving to a formal resource would add a matching step for no real benefit." .
+
+planorama:hasBudget a owl:ObjectProperty ;
+    rdfs:domain schema:Person ;
+    rdfs:range planorama:BudgetRange ;
+    rdfs:label "has budget" .
+
+planorama:minBudget a owl:DatatypeProperty ;
+    rdfs:domain planorama:BudgetRange ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "minimum budget" .
+
+planorama:maxBudget a owl:DatatypeProperty ;
+    rdfs:domain planorama:BudgetRange ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "maximum budget" .
+
+planorama:homeLat a owl:DatatypeProperty ;
+    rdfs:domain schema:Person ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "home latitude" ;
+    rdfs:comment "User's saved location for radius-based search, as flat lat/lon on the Person (not a nested schema:GeoCoordinates resource like on Venue) -- there's exactly one per user, so a nested resource just adds an upsert-by-delete-then-insert step for no benefit." .
+
+planorama:homeLon a owl:DatatypeProperty ;
+    rdfs:domain schema:Person ;
+    rdfs:range xsd:decimal ;
+    rdfs:label "home longitude" .
+
+#################################################################
+# Object properties: User interactions (saved / attended)
+#################################################################
+
+planorama:savedEvent a owl:ObjectProperty ;
+    rdfs:domain schema:Person ;
+    rdfs:range schema:Event ;
+    rdfs:label "saved event" ;
+    rdfs:comment "Baseline direct edge for 'user saved this event'. Simpler than planorama:Interaction; sufficient for M5." .
+
+planorama:attendedEvent a owl:ObjectProperty ;
+    rdfs:domain schema:Person ;
+    rdfs:range schema:Event ;
+    rdfs:label "attended event" .
+
+planorama:hasInteraction a owl:ObjectProperty ;
+    rdfs:domain schema:Person ;
+    rdfs:range planorama:Interaction ;
+    rdfs:label "has interaction" ;
+    rdfs:comment "Optional reified alternative to savedEvent/attendedEvent; use only if timestamped interaction history is needed." .
+
+planorama:interactionType a owl:DatatypeProperty ;
+    rdfs:domain planorama:Interaction ;
+    rdfs:range xsd:string ;
+    rdfs:comment "One of \"saved\", \"attended\", \"viewed\"." .
+
+planorama:interactionTarget a owl:ObjectProperty ;
+    rdfs:domain planorama:Interaction ;
+    rdfs:range schema:Event .
+
+planorama:interactionTimestamp a owl:DatatypeProperty ;
+    rdfs:domain planorama:Interaction ;
+    rdfs:range xsd:dateTime .

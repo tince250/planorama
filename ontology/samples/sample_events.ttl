@@ -1,0 +1,130 @@
+@prefix planorama: <https://planorama.example.org/ontology#> .
+@prefix schema:    <https://schema.org/> .
+@prefix xsd:       <http://www.w3.org/2001/XMLSchema#> .
+
+# Hand-crafted sample data for the M1 Virtuoso smoke test.
+# Loaded into the named graph <https://planorama.example.org/graphs/events>.
+# Mirrors the shape that backend/app/rdf/graph_builder.py (M2) will produce
+# from real Ticketmaster responses -- three events sharing one venue, so
+# "other events at this venue" and category-based filtering are both
+# exercisable immediately.
+#
+# Instance IRIs live under https://planorama.example.org/resource/ (the
+# "pres:" namespace from the plan). Written here as full <...> IRIs rather
+# than pres:foo/bar prefixed names: Turtle's PN_LOCAL grammar does not allow
+# an unescaped "/" in a prefixed name's local part, and Virtuoso's Turtle
+# loader enforces this strictly. rdflib (used by the real ingestion pipeline
+# in M2) builds these as URIRefs directly, so this escaping concern is
+# specific to hand-authored fixture files like this one.
+
+#################################################################
+# Categories
+#################################################################
+
+<https://planorama.example.org/resource/category/sports-basketball-nba> a planorama:EventCategory ;
+    planorama:segment "Sports" ;
+    planorama:genre "Basketball" ;
+    planorama:subGenre "NBA" .
+
+<https://planorama.example.org/resource/category/music-rock-alternative> a planorama:EventCategory ;
+    planorama:segment "Music" ;
+    planorama:genre "Rock" ;
+    planorama:subGenre "Alternative Rock" .
+
+#################################################################
+# Venue (shared by event/G5dIZb8kECzK3 and event/G5dIZb8kECzK4)
+#################################################################
+
+<https://planorama.example.org/resource/venue/KovZ917ANwG> a schema:Place ;
+    planorama:sourceId "KovZ917ANwG" ;
+    schema:name "Moody Center" ;
+    schema:url "https://www.moodycenteratx.com/" ;
+    planorama:hasAccessibleSeating true ;
+    planorama:accessibilityNote "Wheelchair accessible and companion seats are available in all price levels. Contact venue guest services for details." ;
+    schema:address [
+        a schema:PostalAddress ;
+        schema:streetAddress "2001 Robert Dedman Dr" ;
+        schema:postalCode "78712" ;
+        schema:addressLocality "Austin" ;
+        schema:addressRegion "TX" ;
+        schema:addressCountry "US"
+    ] ;
+    schema:geo [
+        a schema:GeoCoordinates ;
+        schema:latitude "30.280735"^^xsd:decimal ;
+        schema:longitude "-97.730837"^^xsd:decimal
+    ] .
+
+<https://planorama.example.org/resource/venue/KovZpZA7AAEA> a schema:Place ;
+    planorama:sourceId "KovZpZA7AAEA" ;
+    schema:name "Stubb's Bar-B-Q Amphitheater" ;
+    schema:url "https://stubbsaustin.com/" ;
+    planorama:hasAccessibleSeating false ;
+    schema:address [
+        a schema:PostalAddress ;
+        schema:streetAddress "801 Red River St" ;
+        schema:postalCode "78701" ;
+        schema:addressLocality "Austin" ;
+        schema:addressRegion "TX" ;
+        schema:addressCountry "US"
+    ] ;
+    schema:geo [
+        a schema:GeoCoordinates ;
+        schema:latitude "30.267370"^^xsd:decimal ;
+        schema:longitude "-97.737400"^^xsd:decimal
+    ] .
+
+#################################################################
+# Events
+#################################################################
+
+<https://planorama.example.org/resource/event/G5dIZb8kECzK3> a schema:Event ;
+    planorama:sourceId "G5dIZb8kECzK3" ;
+    schema:name "San Antonio Spurs vs Phoenix Suns" ;
+    schema:description "San Antonio Spurs vs Phoenix Suns (Sports - Basketball)" ;
+    schema:startDate "2025-02-21T02:30:00Z"^^xsd:dateTime ;
+    schema:url "https://www.ticketmaster.com/san-antonio-spurs-vs-phoenix-suns-austin-texas-02-20-2025/event/3A006101A73B84D2" ;
+    schema:image "https://s1.ticketm.net/dam/a/455/612b13a2-822a-4cda-9920-098692170455_SOURCE" ;
+    schema:location <https://planorama.example.org/resource/venue/KovZ917ANwG> ;
+    planorama:hasCategory <https://planorama.example.org/resource/category/sports-basketball-nba> ;
+    schema:offers <https://planorama.example.org/resource/offer/G5dIZb8kECzK3-0> .
+
+<https://planorama.example.org/resource/offer/G5dIZb8kECzK3-0> a schema:Offer ;
+    schema:url "https://www.ticketmaster.com/san-antonio-spurs-vs-phoenix-suns-austin-texas-02-20-2025/event/3A006101A73B84D2" ;
+    schema:priceCurrency "USD" ;
+    schema:price "45.00"^^xsd:decimal ;
+    planorama:minPrice "45.00"^^xsd:decimal ;
+    planorama:maxPrice "350.00"^^xsd:decimal .
+
+<https://planorama.example.org/resource/event/G5dIZb8kECzK4> a schema:Event ;
+    planorama:sourceId "G5dIZb8kECzK4" ;
+    schema:name "Austin Spurs G League Showcase" ;
+    schema:description "Austin Spurs G League Showcase (Sports - Basketball)" ;
+    schema:startDate "2025-03-05T01:00:00Z"^^xsd:dateTime ;
+    schema:url "https://www.ticketmaster.com/austin-spurs-g-league-showcase" ;
+    schema:location <https://planorama.example.org/resource/venue/KovZ917ANwG> ;
+    planorama:hasCategory <https://planorama.example.org/resource/category/sports-basketball-nba> ;
+    schema:offers <https://planorama.example.org/resource/offer/G5dIZb8kECzK4-0> .
+
+<https://planorama.example.org/resource/offer/G5dIZb8kECzK4-0> a schema:Offer ;
+    schema:priceCurrency "USD" ;
+    schema:price "20.00"^^xsd:decimal ;
+    planorama:minPrice "20.00"^^xsd:decimal ;
+    planorama:maxPrice "80.00"^^xsd:decimal .
+
+<https://planorama.example.org/resource/event/K8vZ917oqf0> a schema:Event ;
+    planorama:sourceId "K8vZ917oqf0" ;
+    schema:name "Midnight Static: Alternative Rock Night" ;
+    schema:description "Midnight Static: Alternative Rock Night (Music - Rock)" ;
+    schema:startDate "2025-04-12T02:00:00Z"^^xsd:dateTime ;
+    schema:url "https://www.ticketmaster.com/midnight-static-alternative-rock-night" ;
+    schema:image "https://s1.ticketm.net/dam/a/000/midnight-static_SOURCE.jpg" ;
+    schema:location <https://planorama.example.org/resource/venue/KovZpZA7AAEA> ;
+    planorama:hasCategory <https://planorama.example.org/resource/category/music-rock-alternative> ;
+    schema:offers <https://planorama.example.org/resource/offer/K8vZ917oqf0-0> .
+
+<https://planorama.example.org/resource/offer/K8vZ917oqf0-0> a schema:Offer ;
+    schema:priceCurrency "USD" ;
+    schema:price "25.00"^^xsd:decimal ;
+    planorama:minPrice "25.00"^^xsd:decimal ;
+    planorama:maxPrice "60.00"^^xsd:decimal .
