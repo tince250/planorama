@@ -357,14 +357,8 @@ def run_chat(
 ) -> tuple[str, list[EventOut]]:
     """Runs one chat turn: sends the conversation (as provided by the
     client, stateless on the server) to the model with tools available, and
-    keeps letting it call tools -- e.g. list_saved_events to see what the
-    user saved, THEN search_events using what it just learned -- across
-    multiple rounds until it stops requesting them, up to MAX_TOOL_ROUNDS as
-    a safety cap. (An earlier version only allowed one round: the model
-    could call list_saved_events, but by the time it wanted to follow up
-    with search_events using the category it just learned, tools were no
-    longer offered, so it could only say "let me check that" without
-    actually doing it.) Returns the model's final natural-language reply
+    keeps letting it call across multiple rounds until it stops requesting them, up to MAX_TOOL_ROUNDS as
+    a safety cap. Returns the model's final natural-language reply
     plus the events from the last search (if any) for the frontend to
     optionally render alongside the text."""
     client = OpenAI(api_key=settings.openai_api_key)
@@ -401,7 +395,7 @@ def run_chat(
                 }
             )
 
-    # Round budget exhausted (very unusual) -- ask once more without tools
+    # Round budget exhausted -> ask once more without tools
     # so we always return a real reply instead of silently giving up.
     final = client.chat.completions.create(model=settings.openai_model, messages=openai_messages)
     return final.choices[0].message.content or "", matched_events

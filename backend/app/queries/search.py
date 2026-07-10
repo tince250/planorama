@@ -29,8 +29,7 @@ def _bindings_float(binding: dict, var: str) -> float | None:
 
 
 def _bindings_bool(binding: dict, var: str) -> bool | None:
-    # Virtuoso serializes xsd:boolean as "1"/"0" in SPARQL JSON results, not
-    # the "true"/"false" the XSD lexical space would suggest.
+    # Virtuoso serializes xsd:boolean as "1"/"0" in SPARQL JSON results, not "true"/"false".
     value = _bindings_value(binding, var)
     return value in ("1", "true") if value is not None else None
 
@@ -56,13 +55,10 @@ def _build_filter_body(
     venue_iri: str | None = None,
     exclude_event_iri: str | None = None,
 ) -> str:
-    """Builds the WHERE-clause body (inside GRAPH { ... }) shared by the
-    candidate-id, count, and geo-only queries below. Only joins/filters that
+    """Only filters that
     are actually needed are added, so events lacking an unrelated optional
-    field (e.g. no offers) aren't spuriously excluded. Distance/radius
-    itself is handled separately in Python (see search_events) -- see the
-    implementation plan's Risks section for why we don't lean on Virtuoso's
-    GeoSPARQL support for this."""
+    field (e.g. no offers) aren't excluded. Distance/radius
+    itself is handled separately in Python."""
     lines = ["?event a schema:Event ; schema:name ?name ; schema:startDate ?startDate ."]
     filters = []
 
@@ -75,11 +71,6 @@ def _build_filter_body(
         filters.append(f'CONTAINS(LCASE(?name), LCASE("{_escape_literal(q)}"))')
 
     if category:
-        # UNION, not three OPTIONALs + BOUND()/CONTAINS() in one big FILTER:
-        # on the full multi-city dataset the OPTIONAL-chain form made
-        # Virtuoso pick a catastrophic join plan (query never returned even
-        # after 15s+); this form runs in ~1s. See the location filter below
-        # for the same fix applied to the same underlying pattern.
         lines.append(
             "?event planorama:hasCategory ?cat . "
             "{ ?cat planorama:segment ?catVal } UNION { ?cat planorama:genre ?catVal } "
@@ -108,10 +99,6 @@ def _build_filter_body(
         )
 
     if location:
-        # No hardcoded city -- matches whatever city/region/country is
-        # actually in the data (Austin, London, Berlin, ...), so new
-        # ingested regions work without a code change here. UNION, not
-        # OPTIONAL+BOUND() -- see the category filter above for why.
         lines.append(
             "?event schema:location ?locVenue . ?locVenue schema:address ?locAddr . "
             "{ ?locAddr schema:addressLocality ?locVal } UNION { ?locAddr schema:addressRegion ?locVal } "
@@ -131,9 +118,6 @@ def build_candidate_query(
     order_by_start_date: bool = True,
     **filter_kwargs,
 ) -> str:
-    """Returns just the matching ?event IRIs. When `limit` is given, paging
-    happens here in SPARQL (the common case: no distance sort needed), so
-    we never fetch more candidate ids than a single page requires."""
     where_clause = _build_filter_body(**filter_kwargs)
     suffix = " ORDER BY ?startDate" if order_by_start_date else ""
     if limit is not None:
@@ -167,8 +151,8 @@ def build_geo_query(**filter_kwargs) -> str:
     matched event's venue lat/lon (if any), without the heavier
     offers/category/performer joins of build_detail_query. Used only when
     distance sorting/filtering is requested, so we can rank+paginate the
-    *whole* filtered set cheaply before fetching full detail for just the
-    final page (see search_events)."""
+    whole filtered set cheaply before fetching full detail for just the
+    final page."""
     where_clause = _build_filter_body(**filter_kwargs)
     return f"""
 {PREFIXES}
@@ -234,9 +218,6 @@ WHERE {{
 
 
 def bindings_to_events(bindings: list[dict]) -> "OrderedDict[str, EventOut]":
-    """Groups the (Cartesian-product-prone, see plan Risk 5) detail query
-    rows by ?event IRI into one EventOut per event, deduping the
-    one-to-many performer/offer values via sets keyed on their content."""
     events: "OrderedDict[str, EventOut]" = OrderedDict()
     performers: dict[str, set[str]] = {}
     offers: dict[str, set[tuple]] = {}
@@ -316,9 +297,6 @@ def bindings_to_events(bindings: list[dict]) -> "OrderedDict[str, EventOut]":
 
 
 def fetch_events_by_iri(event_iris: list[str]) -> list[EventOut]:
-    """Fetches full EventOut detail for an explicit, ordered list of event
-    IRIs (used by the single-event and venue-listing endpoints, where the
-    caller already knows exactly which events it wants)."""
     if not event_iris:
         return []
     events_by_iri = bindings_to_events(sparql_client.query(build_detail_query(event_iris)))
@@ -353,10 +331,7 @@ def search_events(
 
     if lat is not None and lon is not None:
         # Distance sort/filter needs every matching event's coordinates up
-        # front, but NOT its full detail (offers/category/performers) --
-        # fetch those lightweight geo rows for the whole filtered set, rank
-        # by distance, then only run the expensive detail query for the
-        # single final page of results.
+        # front, but not full detail (offers/category/performers)
         geo_bindings = sparql_client.query(build_geo_query(**filter_kwargs))
         ranked: list[tuple[str, float | None]] = []
         for b in geo_bindings:

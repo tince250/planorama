@@ -64,11 +64,6 @@ export default function App() {
 
   useEffect(() => {
     if (!username || !navigator.geolocation) return;
-    // Best-effort: if the user denies the permission prompt or their
-    // browser/device can't provide a location, we just never set
-    // userLocation and the bot falls back to asking which city they mean
-    // (see the location_note branch in the backend system prompt) --
-    // there's no error state to show here, it's a silent enhancement.
     navigator.geolocation.getCurrentPosition(
       (position) => setUserLocation({ lat: position.coords.latitude, lon: position.coords.longitude }),
       () => {},
@@ -134,7 +129,7 @@ export default function App() {
           user_lon: userLocation?.lon,
           // `events` is included for assistant turns so the backend can
           // resolve later follow-ups ("tell me more about that one") back
-          // to a real event id -- see _to_openai_message on the backend.
+          // to a real event id.
           messages: nextMessages.map(({ role, content, events }) => ({ role, content, events })),
         }),
       });
